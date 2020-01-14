@@ -1,5 +1,5 @@
 # NOTE: update this with your service name
-service: notes-app-api
+service: notes-app-2-api
 
 # Create an optimized package for our functions 
 package:
@@ -9,6 +9,10 @@ plugins:
   - serverless-bundle # Package our functions with Webpack
   - serverless-offline
   - serverless-dotenv-plugin # Load .env as environment variables
+
+custom:
+  stage: ${opt:stage, self:provider.stage}
+  tableName: ${self:custom.stage}-notes
 
 provider:
   name: aws
@@ -24,7 +28,7 @@ provider:
   #  sampleEnvVar: ${env:SAMPLE_ENV_VAR}
 
   environment:
-          tableName: notes
+          tableName: ${self:custom.tableName}
           stripeSecretKey: ${env:STRIPE_SECRET_KEY}
 
   iamRoleStatements:
@@ -37,7 +41,8 @@ provider:
                     - dynamodb:PutItem
                     - dynamodb:UpdateItem
                     - dynamodb:DeleteItem
-            Resource: "arn:aws:dynamodb:us-east-2:*:*"
+            Resource: 
+                    - "Fn::GetAtt": [ NotesTable, Arn ]
 
 functions:
         create:
@@ -83,7 +88,7 @@ functions:
                                 path: notes/{id}
                                 method: delete 
                                 cors: true
-                                authorizer: 
+                                authorizer: aws_iam
                                         
         billing:
                 handler: billing.main
@@ -96,3 +101,7 @@ functions:
         
 resources:
         - ${file(resources/api-gateway-errors.yml)}
+        - ${file(resources/dynamodb-table.yml)}
+        - ${file(resources/s3-bucket.yml)}
+        - ${file(resources/cognito-user-pool.yml)}
+        - ${file(resources/cognito-identity-pool.yml)}
